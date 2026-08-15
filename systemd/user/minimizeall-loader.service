@@ -1,0 +1,11 @@
+[Unit]
+Description=Reload minimizeall KWin script
+After=plasma-kwin_wayland.service graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/minimizeall-loader.sh
+
+[Install]
+WantedBy=graphical-session.target

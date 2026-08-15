@@ -1,0 +1,15 @@
+[Unit]
+Description=GooseRelay VPN Client
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vergoboy
+WorkingDirectory=/home/vergoboy/Documents/git/GooseRelayVPN-client-v1.6.0-linux-amd64
+ExecStart=/home/vergoboy/Documents/git/GooseRelayVPN-client-v1.6.0-linux-amd64/goose-client -config /home/vergoboy/Documents/git/GooseRelayVPN-client-v1.6.0-linux-amd64/client_config.json
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

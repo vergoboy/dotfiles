@@ -1,0 +1,57 @@
+[global]
+queue_mode = "sequential"
+rotation_secs = 0
+audio_fade_ms = 500
+wallpaper_filter_json = '{"filters":[],"filter_logics":[]}'
+wallpaper_sorts = []
+wallpaper_skip_types = []
+wallpaper_filter_tags = []
+wallpaper_skip_content_ratings = []
+
+[global.layout]
+fillmode = "preserve_aspect_crop"
+align = "center"
+rotation = "normal"
+
+[global.auto_replay]
+any_window = "none"
+focused = "none"
+maximized = "none"
+fullscreen = "pause"
+session_locked = "stop"
+session_inactive = "stop"
+
+[plugin.weweb-renderer]
+fps = "30"
+render_node = ""
+remote_debugging_port = "0"
+resolution = "2"
+shared_texture_enabled = "true"
+volume = "100"
+enable_audio = "true"
+
+[plugin.waywallen-image]
+resolution = "0"
+fps = "30"
+render_node = ""
+
+[plugin.wescene-renderer]
+volume = "100"
+render_node = ""
+custom_extent = "1080"
+fps = "30"
+msaa = "1"
+enable_audio = "true"
+hwdec = "auto"
+resolution = "2"
+
+[plugin.waywallen-video]
+enable_audio = "true"
+hwdec = "auto"
+loop_file = "inf"
+volume = "100"
+resolution = "0"
+fps = "30"
+render_node = ""
+
+[display]

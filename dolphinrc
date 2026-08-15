@@ -1,0 +1,20 @@
+[General]
+LockPanels=false
+Version=202
+ViewPropsTimestamp=2026,5,18,5,53,52.178
+
+[KFileDialog Settings]
+Places Icons Auto-resize=false
+Places Icons Static Size=22
+
+[MainWindow]
+MenuBar=Disabled
+
+[MainWindow][Toolbar mainToolBar]
+ToolButtonStyle=IconOnly
+
+[PreviewSettings]
+Plugins=calligraimagethumbnail,calligrathumbnail,appimagethumbnail,audiothumbnail,comicbookthumbnail,cursorthumbnail,directorythumbnail,djvuthumbnail,ebookthumbnail,exrthumbnail,imagethumbnail,jpegthumbnail,kraorathumbnail,opendocumentthumbnail,svgthumbnail,windowsexethumbnail,windowsimagethumbnail,ffmpegthumbs,itinerarythumbnail,quithumbnail,blenderthumbnail,gsthumbnail,mobithumbnail,rawthumbnail,mltpreview,pothumbnail,webarchivethumbnail,palathumbcreator,fontthumbnail,glycin-heif,glycin-image-rs,glycin-jxl,glycin-svg
+
+[UiSettings]
+ColorScheme=Sweet

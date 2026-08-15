@@ -1,0 +1,12 @@
+[Global plugin config]
+manageProfile=false
+
+[SSH Config][vergoboy.ir]
+hostname=vergoboy.ir
+identifier=vergoboy.ir
+importedFromSshConfig=true
+port=
+profileName=
+sshkey=
+useSshConfig=true
+username=root

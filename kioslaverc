@@ -1,0 +1,19 @@
+AutoResume=true
+ProxyUrlDisplayFlags=9
+
+[Proxy]
+Authmode=Settings
+ProxyType=Settings
+ftpProxy=Settings
+httpProxy=Settings
+httpsProxy=Settings
+socksProxy=Settings
+
+[Proxy Settings]
+Authmode=0
+NoProxyFor=localhost,127.0.0.0/8,::1
+ProxyType=0
+ftpProxy=http://127.0.0.1:12334
+httpProxy=http://127.0.0.1:12334
+httpsProxy=http://127.0.0.1:12334
+socksProxy=socks://127.0.0.1:12334

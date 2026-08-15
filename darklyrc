@@ -1,0 +1,11 @@
+[Common]
+FloatingTitlebar=true
+ShadowStrength=51
+SunkenEffect=true
+
+[Style]
+DolphinSidebarOpacity=40
+DolphinViewOpacity=70
+MenuBarOpacity=70
+TabBarOpacity=70
+ToolBarOpacity=70

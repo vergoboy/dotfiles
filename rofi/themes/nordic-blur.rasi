@@ -1,0 +1,123 @@
+/* Nordic Solid Theme for Rofi
+ * Nord color palette — no transparency
+ */
+
+* {
+    nord0:       #2E3440;
+    nord1:       #3B4252;
+    nord2:       #434C5E;
+    nord3:       #4C566A;
+    nord4:       #D8DEE9;
+    nord8:       #88C0D0;
+    nord11:      #BF616A;
+    nord14:      #A3BE8C;
+
+    background-color:     transparent;
+    text-color:           #D8DEE9;
+    border:               0;
+    margin:               0;
+    padding:              0;
+    spacing:              0;
+}
+
+window {
+    width:                480px;
+    background-color:     #2E3440;
+    border:               2px;
+    border-color:         #88C0D0;
+    border-radius:        12px;
+    padding:              12px;
+}
+
+mainbox {
+    background-color:     transparent;
+    children:             [ inputbar, mode-switcher, listview ];
+    spacing:              8px;
+}
+
+inputbar {
+    background-color:     #3B4252;
+    border-radius:        8px;
+    padding:              10px 14px;
+    spacing:              8px;
+    children:             [ prompt, entry ];
+}
+
+prompt {
+    text-color:           #88C0D0;
+    font:                 "JetBrainsMono Nerd Font Bold 12";
+}
+
+entry {
+    text-color:           #D8DEE9;
+    placeholder:          "Search...";
+    placeholder-color:    #4C566A;
+    cursor:               text;
+}
+
+mode-switcher {
+    background-color:     transparent;
+    spacing:              6px;
+}
+
+button {
+    background-color:     #3B4252;
+    text-color:           #D8DEE9;
+    border-radius:        6px;
+    padding:              6px 10px;
+}
+
+button selected {
+    background-color:     #88C0D0;
+    text-color:           #2E3440;
+}
+
+listview {
+    background-color:     transparent;
+    columns:              1;
+    lines:                8;
+    spacing:              4px;
+    scrollbar:            false;
+}
+
+element {
+    background-color:     transparent;
+    border-radius:        8px;
+    padding:              8px 10px;
+    spacing:              10px;
+    children:             [ element-icon, element-text ];
+}
+
+element normal.normal,
+element alternate.normal {
+    background-color:     transparent;
+    text-color:           #D8DEE9;
+}
+
+element selected.normal {
+    background-color:     #88C0D0;
+    text-color:           #2E3440;
+}
+
+element normal.urgent { text-color: #BF616A; }
+element selected.urgent {
+    background-color:     #BF616A;
+    text-color:           #2E3440;
+}
+
+element normal.active { text-color: #A3BE8C; }
+element selected.active {
+    background-color:     #A3BE8C;
+    text-color:           #2E3440;
+}
+
+element-icon {
+    size:                 24px;
+    vertical-align:       0.5;
+}
+
+element-text {
+    text-color:           inherit;
+    vertical-align:       0.5;
+    highlight:            bold;
+}

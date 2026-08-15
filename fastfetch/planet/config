@@ -1,0 +1,3 @@
+# Animation speed: milliseconds between frames (lower = faster, default 110).
+# Re-run `python3 ~/.config/fastfetch/planet/generate.py` after editing.
+gap=110

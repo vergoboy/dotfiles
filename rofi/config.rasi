@@ -1,0 +1,32 @@
+configuration {
+    modi:                       "drun,filebrowser,window,ssh";
+    show-icons:                 true;
+    icon-theme:                 "Papirus-Dark";
+    display-drun:               " Apps";
+    display-filebrowser:        " Files";
+    display-window:             " Windows";
+    display-ssh:                " SSH";
+    drun-display-format:        "{name}";
+    window-format:              "{w} · {c} · {t}";
+    font:                       "JetBrainsMono Nerd Font 12";
+    fixed-num-lines:            true;
+    lines:                      8;
+    columns:                    1;
+    sort:                       true;
+    sorting-method:             "fzf";
+    matching:                   "fuzzy";
+    scroll-method:              0;
+    disable-history:            false;
+    hide-scrollbar:             true;
+    sidebar-mode:               true;
+    hover-select:               false;
+    me-select-entry:            "";
+    me-accept-entry:            "MousePrimary";
+    terminal:                   "kitty";
+    ssh-client:                 "ssh";
+    ssh-command:                "{terminal} -e '{ssh-client} {host} [-p {port}]'";
+    parse-known-hosts:          true;
+    parse-hosts:                true;
+}
+
+@theme "nordic-blur"

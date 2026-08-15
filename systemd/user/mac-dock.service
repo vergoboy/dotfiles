@@ -1,0 +1,18 @@
+[Unit]
+Description=mac-dock — macOS-style dock for KWin
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Environment=LD_PRELOAD=/usr/lib/libgtk4-layer-shell.so
+Type=simple
+ExecStart=/usr/bin/python3 /home/vergoboy/.local/share/mac-dock/dock.py
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=5
+KillSignal=SIGTERM
+SendSIGKILL=yes
+
+[Install]
+WantedBy=graphical-session.target
+

@@ -1,0 +1,7 @@
+[Unit]
+Description=Local LLM stack (coder + embedding)
+Wants=llama-coder.service llama-embed.service
+After=llama-coder.service llama-embed.service
+
+[Install]
+WantedBy=default.target

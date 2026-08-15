@@ -1,0 +1,28 @@
+[Unit]
+Description=OpenClaw Gateway (v2026.6.8)
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+ExecStart=/usr/bin/node /home/vergoboy/.npm-global/lib/node_modules/openclaw/dist/index.js gateway --port 18789
+Restart=always
+RestartSec=5
+RestartPreventExitStatus=78
+TimeoutStopSec=30
+TimeoutStartSec=30
+SuccessExitStatus=0 143
+KillMode=control-group
+Environment=HOME=/home/vergoboy
+Environment=TMPDIR=/tmp
+Environment=PATH=/usr/bin:/home/vergoboy/.npm-global/bin:/home/vergoboy/.local/bin:/home/vergoboy/bin:/home/vergoboy/.nix-profile/bin:/home/vergoboy/.local/share/pnpm:/usr/local/bin:/bin
+Environment=OPENCLAW_GATEWAY_PORT=18789
+Environment=OPENCLAW_SYSTEMD_UNIT=openclaw-gateway.service
+Environment="OPENCLAW_WINDOWS_TASK_NAME=OpenClaw Gateway"
+Environment=OPENCLAW_SERVICE_MARKER=openclaw
+Environment=OPENCLAW_SERVICE_KIND=gateway
+Environment=OPENCLAW_SERVICE_VERSION=2026.6.8
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=xbindkeys
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/xbindkeys --nodaemon
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target

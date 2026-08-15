@@ -1,0 +1,9 @@
+[Libinput][10429][2310][UGTABLET 6 inch PenTablet]
+LeftHanded=false
+
+[Mouse]
+cursorSize=32
+cursorTheme=material_cursors
+
+[Tablet]
+SyncWithMouse=false
