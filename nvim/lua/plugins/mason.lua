@@ -1,14 +1,15 @@
 return {
-	"williamboman/mason.nvim",
-	cmd = "Mason",
-	event = "BufReadPre",
-	opts = {
-		ui = {
-			icons = {
-				package_installed = "✓",
-				package_pending = "➜",
-				package_uninstalled = "✗",
-			},
-		},
-	},
+  "mason-org/mason.nvim",
+  opts = {
+    ensure_installed = {
+      "rust-analyzer",
+    },
+    ui = {
+      icons = {
+        package_installed = "✓",
+        package_pending = "➜",
+        package_uninstalled = "✗",
+      },
+    },
+  },
 }

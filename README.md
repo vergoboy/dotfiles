@@ -1,6 +1,6 @@
 # dotfiles
 
-Config for **vergoboy** — KDE Plasma (Wayland) + fish + nvim + rofi + fastfetch + more.
+Config for **vergoboy** — KDE Plasma (Wayland) + Hyprland + fish + nvim + rofi + fastfetch + more.
 
 ## Contents
 
@@ -11,6 +11,7 @@ Highlights:
 
 | Area | Path |
 |------|------|
+| Hyprland desktop | `hyprland/` (hypr, waybar, waypaper, wlogout, swaync, quickshell, ml4w, kitty, rofi, btop, fish, gtk, ...) |
 | Shell | `fish/`, `starship.toml` |
 | Editor | `nvim/`, `opencode/` |
 | KDE / Plasma | `kdeglobals`, `kwinrc`, `kwinoutputconfig.json`, `kglobalshortcutsrc`, `plasma-org.kde.plasma.desktop-appletsrc`, `plasmashellrc`, `kdedefaults/`, `plasma-workspace/`, `Kvantum/`, `klassy/`, `kde-material-you-colors/`, `latte/` |

@@ -1,3 +1,5 @@
+-- Bootstrap lazy.nvim
+require("config.patches") -- Neovim 0.11 compatibility shims
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
   local lazyrepo = "https://github.com/folke/lazy.nvim.git"
@@ -14,15 +16,6 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
-vim.api.nvim_create_autocmd("VimEnter", {
-  callback = function()
-    local arg = vim.fn.argv(0)
-    if vim.fn.isdirectory(arg) == 1 then
-      vim.cmd("cd " .. arg)
-    end
-  end,
-})
-
 require("lazy").setup({
   spec = {
     -- add LazyVim and import its plugins
@@ -31,37 +24,30 @@ require("lazy").setup({
     { import = "plugins" },
   },
   defaults = {
-    -- By default, only LazyVim plugins will be lazy-loaded. Your custom plugins will load during startup.
-    -- If you know what you're doing, you can set this to `true` to have all your custom plugins lazy-loaded by default.
+    -- Only LazyVim plugins are lazy-loaded by default.
+    -- Your custom plugins load during startup unless you set lazy = true.
     lazy = false,
-    -- It's recommended to leave version=false for now, since a lot the plugin that support versioning,
-    -- have outdated releases, which may break your Neovim install.
-    version = false, -- always use the latest git commit
-    -- version = "*", -- try installing the latest stable version for plugins that support semver
+    -- Always use the latest git commit
+    version = false,
   },
   install = { colorscheme = { "tokyonight", "habamax" } },
   checker = {
     enabled = true, -- check for plugin updates periodically
-    notify = true, -- notify on update
-  }, -- automatically check for plugin updates
+    notify = false, -- notify on update
+  },
+  ui = {
+    border = "single",
+  },
   performance = {
     rtp = {
       -- disable some rtp plugins
       disabled_plugins = {
         "gzip",
-        -- "matchit",
-        -- "matchparen",
-        -- "netrwPlugin",
         "tarPlugin",
         "tohtml",
         "tutor",
         "zipPlugin",
       },
-    },
-  },
-  opts = {
-    ui = {
-      border = "single",
     },
   },
 })

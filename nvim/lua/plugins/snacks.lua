@@ -1,36 +1,17 @@
 return {
   "folke/snacks.nvim",
-  priority = 1000,
-  lazy = false,
-  ---@type snacks.Config
   opts = {
-    bigfile = { enabled = true },
+    -- File explorer: open in the current file's directory
     explorer = {
       search = false,
       cwd = function()
         local dir = vim.fn.expand("%:p:h")
-        return dir ~= "" and dir or vim.loop.cwd()
+        return dir ~= "" and dir or vim.uv.cwd()
       end,
     },
-    indent = { enabled = true },
-    input = { enabled = true },
-    picker = { enabled = true },
-    notifier = { enabled = true },
-    quickfile = { enabled = true },
-    scope = { enabled = true },
-    scroll = { enabled = true },
-    statuscolumn = { enabled = true },
-    words = { enabled = true },
     dashboard = {
       preset = {
-        --         header = [[
-        -- ███╗   ██╗███████╗ ██████╗ ██╗   ██╗██╗███╗   ███╗
-        -- ████╗  ██║██╔════╝██╔═══██╗██║   ██║██║████╗ ████║
-        -- ██╔██╗ ██║█████╗  ██║   ██║██║   ██║██║██╔████╔██║
-        -- ██║╚██╗██║██╔══╝  ██║   ██║╚██╗ ██╔╝██║██║╚██╔╝██║
-        -- ██║ ╚████║███████╗╚██████╔╝ ╚████╔╝ ██║██║ ╚═╝ ██║
-        -- ╚═╝  ╚═══╝╚══════╝ ╚═════╝   ╚═══╝  ╚═╝╚═╝     ╚═╝]],
-
+        -- stylua: ignore
         header = [[
                                                                       
                                                                     
@@ -57,18 +38,16 @@ return {
           { icon = " ", key = "q", desc = "Quit", action = ":qa" },
         },
       },
-
       formats = {
         key = function(item)
           return { { "[", hl = "special" }, { item.key, hl = "key" }, { "]", hl = "special" } }
         end,
       },
-
       sections = {
         { section = "header" },
-        { icon = " ", title = "Keymaps", section = "keys", indent = 2, padding = 1 },
-        { icon = " ", title = "Recent Files", section = "recent_files", indent = 2, padding = 1 },
-        { icon = " ", title = "Projects", section = "projects", limit = 5, indent = 2, padding = 1 },
+        { icon = " ", title = "Keymaps", section = "keys", indent = 2, padding = 1 },
+        { icon = " ", title = "Recent Files", section = "recent_files", indent = 2, padding = 1 },
+        { icon = " ", title = "Projects", section = "projects", limit = 5, indent = 2, padding = 1 },
         { section = "startup" },
       },
     },

@@ -1,0 +1,584 @@
+#!/usr/bin/env python3
+"""Plasma-style audio applet for Hyprland/ML4W.
+
+A floating popup panel with:
+  - default output (speaker) / input (mic) device pickers
+  - master output + mic volume sliders and mute toggles
+  - per-application volume sliders, mute and per-app device routing
+
+Speaks to PipeWire through `pactl` (pipewire-pulse).
+"""
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, GLib, Gtk, Pango
+
+import re
+import subprocess
+import time
+
+REFRESH_MS = 600
+MAX_VOL = 150
+
+CSS = """
+window {
+    background-color: rgba(22, 25, 34, 0.97);
+    color: #cdd6f4;
+    font-size: 13px;
+}
+.applet-header {
+    font-size: 15px;
+    font-weight: bold;
+    color: #ffffff;
+    padding: 2px 2px 0 2px;
+}
+.applet-sub {
+    font-size: 10px;
+    color: #6b7394;
+}
+.applet-section {
+    font-size: 11px;
+    font-weight: bold;
+    color: #7aa2f7;
+    padding: 6px 2px 0 2px;
+}
+.applet-row {
+    background-color: #1e2330;
+    border-radius: 8px;
+    padding: 5px 8px;
+}
+.applet-name {
+    font-size: 12px;
+    color: #cdd6f4;
+}
+applet-device {
+    background-color: #151a24;
+    color: #cdd6f4;
+    border-radius: 6px;
+    padding: 3px 6px;
+}
+scale trough {
+    min-height: 8px;
+    border-radius: 4px;
+    background-color: #2c3450;
+}
+scale highlight {
+    background-color: #7aa2f7;
+    border-radius: 4px;
+}
+scale slider {
+    min-width: 14px;
+    min-height: 14px;
+    border-radius: 50%;
+    background-color: #c0caf5;
+}
+button {
+    border-radius: 6px;
+}
+button.mute {
+    background-color: #1e2330;
+    color: #cdd6f4;
+}
+button.mute.muted {
+    background-color: #b3413d;
+    color: #ffffff;
+}
+"""
+
+
+def run(*args):
+    try:
+        p = subprocess.run(["pactl", *args], capture_output=True, text=True, timeout=2)
+        return p.stdout
+    except Exception:
+        return ""
+
+
+def _vol_pct(txt):
+    m = re.search(r"Volume:.*?(\d+)%", txt, re.S)
+    return int(m.group(1)) if m else 100
+
+
+def _muted(txt):
+    m = re.search(r"Mute: (yes|no)", txt)
+    return m.group(1) == "yes" if m else False
+
+
+def _blocks(txt, head):
+    return [b for b in re.split(r"\n(?=" + head + r" #)", txt) if b.strip()]
+
+
+def parse_sinks(txt):
+    out = []
+    for b in _blocks(txt, "Sink"):
+        m = re.match(r"Sink #(\d+)", b)
+        if not m:
+            continue
+        nm = re.search(r"^\s*Name: (\S+)", b, re.M)
+        de = re.search(r"^\s*Description: (.+)$", b, re.M)
+        out.append(
+            {
+                "idx": int(m.group(1)),
+                "name": nm.group(1) if nm else "",
+                "desc": de.group(1).strip() if de else "",
+                "muted": _muted(b),
+                "vol": _vol_pct(b),
+            }
+        )
+    return out
+
+
+def parse_sources(txt):
+    out = []
+    for b in _blocks(txt, "Source"):
+        m = re.match(r"Source #(\d+)", b)
+        if not m:
+            continue
+        nm = re.search(r"^\s*Name: (\S+)", b, re.M)
+        if not nm or ".monitor" in nm.group(1):
+            continue
+        de = re.search(r"^\s*Description: (.+)$", b, re.M)
+        out.append(
+            {
+                "idx": int(m.group(1)),
+                "name": nm.group(1),
+                "desc": de.group(1).strip() if de else "",
+                "muted": _muted(b),
+                "vol": _vol_pct(b),
+            }
+        )
+    return out
+
+
+def parse_sink_inputs(txt):
+    out = []
+    for b in _blocks(txt, "Sink Input"):
+        m = re.match(r"Sink Input #(\d+)", b)
+        if not m:
+            continue
+        sink = re.search(r"^\s*Sink: (\d+)", b, re.M)
+        label = "Application"
+        for key in ("application.name", "media.name", "application.process.binary"):
+            lm = re.search(r'^\s*%s\s*=\s*"(.+?)"' % key, b, re.M)
+            if lm:
+                label = lm.group(1)
+                break
+        out.append(
+            {
+                "idx": int(m.group(1)),
+                "sink": int(sink.group(1)) if sink else -1,
+                "label": label,
+                "muted": _muted(b),
+                "vol": _vol_pct(b),
+            }
+        )
+    return out
+
+
+def parse_source_outputs(txt):
+    out = []
+    for b in _blocks(txt, "Source Output"):
+        m = re.match(r"Source Output #(\d+)", b)
+        if not m:
+            continue
+        src = re.search(r"^\s*Source: (\d+)", b, re.M)
+        label = "Application"
+        for key in ("application.name", "media.name", "application.process.binary"):
+            lm = re.search(r'^\s*%s\s*=\s*"(.+?)"' % key, b, re.M)
+            if lm:
+                label = lm.group(1)
+                break
+        out.append(
+            {
+                "idx": int(m.group(1)),
+                "source": int(src.group(1)) if src else -1,
+                "label": label,
+                "muted": _muted(b),
+                "vol": _vol_pct(b),
+            }
+        )
+    return out
+
+
+class AudioApplet(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="Audio")
+        self.set_decorated(False)
+        self.set_resizable(False)
+        self.set_default_size(400, 640)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.set_wmclass("audio-applet", "audio-applet")
+
+        self._loading = False
+        self._dragging = False
+        self._had_focus = False
+        self._focus_since = 0.0
+        self._signature = None
+        self._sinks = []
+        self._sources = []
+        self._inputs = []
+        self._outputs = []
+        self._dflt_sink = ""
+        self._dflt_source = ""
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS.encode())
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+        Gtk.Settings.get_default().props.gtk_application_prefer_dark_theme = True
+
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.add(root)
+
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        header.set_name("applet-header")
+        t = Gtk.Label(label="\U000f0250  Audio", xalign=0)
+        t.get_style_context().add_class("applet-header")
+        header.pack_start(t, True, True, 0)
+        close = Gtk.Button(label="\u2715")
+        close.get_style_context().add_class("mute")
+        close.connect("clicked", lambda *_: self.destroy())
+        header.pack_start(close, False, False, 0)
+        root.pack_start(header, False, False, 0)
+
+        sub = Gtk.Label(
+            label="Speaker / Mic / Per-app mixer \u2014 powered by PipeWire", xalign=0
+        )
+        sub.get_style_context().add_class("applet-sub")
+        root.pack_start(sub, False, False, 0)
+
+        sw = Gtk.ScrolledWindow()
+        sw.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        sw.set_vexpand(True)
+        self._content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        sw.add(self._content)
+        root.pack_start(sw, True, True, 0)
+
+        self.connect("focus-in-event", self._on_focus_in)
+        self.connect("focus-out-event", self._on_focus_out)
+        self.connect("key-press-event", self._on_key)
+        self.connect("destroy", self._on_destroy)
+
+        GLib.timeout_add(REFRESH_MS, self._tick)
+        self.refresh()
+
+    # ---- helpers ---------------------------------------------------------
+    def _on_destroy(self, *_):
+        print("AUDIO-APPLET destroy", flush=True)
+        Gtk.main_quit()
+
+    def _on_key(self, _w, ev):
+        if ev.keyval == Gdk.KEY_Escape:
+            self.destroy()
+        return False
+
+    def _on_focus_in(self, *_):
+        print(f"AUDIO-APPLET focus-in t={self._focus_since}", flush=True)
+        self._had_focus = True
+        self._focus_since = time.time()
+        return False
+
+    def _on_focus_out(self, *_):
+        print(f"AUDIO-APPLET focus-out had={self._had_focus} age={time.time() - self._focus_since:.2f}", flush=True)
+        if self._had_focus and time.time() - self._focus_since > 0.6:
+            self.destroy()
+        return False
+
+    def _tick(self):
+        self.refresh()
+        return True
+
+    def _section(self, text):
+        lab = Gtk.Label(label=text, xalign=0)
+        lab.get_style_context().add_class("applet-section")
+        return lab
+
+    def _new_slider(self, value, on_apply):
+        adj = Gtk.Adjustment(
+            value=min(max(int(value), 0), MAX_VOL),
+            lower=0,
+            upper=MAX_VOL,
+            step_increment=1,
+            page_increment=10,
+        )
+        scale = Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL, adjustment=adj)
+        scale.set_draw_value(False)
+        scale.set_hexpand(True)
+        scale.set_has_origin(True)
+
+        def press(*_):
+            self._dragging = True
+            return False
+
+        def release(*_):
+            self._dragging = False
+            return False
+
+        scale.connect("button-press-event", press)
+        scale.connect("button-release-event", release)
+
+        pct = Gtk.Label(label="", width_chars=4, xalign=1)
+        pct.get_style_context().add_class("applet-sub")
+
+        def changed(adjustment):
+            if self._loading:
+                return
+            v = int(adjustment.get_value())
+            pct.set_text(f"{v}%")
+            on_apply(v)
+
+        adj.connect("value-changed", changed)
+        adj.set_value(min(max(int(value), 0), MAX_VOL))  # fire initial label
+        return scale, pct
+
+    def _new_mute(self, muted, on_toggle):
+        b = Gtk.ToggleButton(label="\U0001f50a" if not muted else "\U0001f507")
+        b.set_active(muted)
+        b.get_style_context().add_class("mute")
+        if muted:
+            b.get_style_context().add_class("muted")
+        b.connect("toggled", lambda btn: (btn.get_style_context().remove_class("muted"), btn.get_style_context().add_class("muted")) and on_toggle())
+        return b
+
+    def _new_combo(self, items, current, on_select):
+        combo = Gtk.ComboBoxText()
+        for _i, it in enumerate(items):
+            combo.append_text(it["desc"] or it["name"])
+        self._loading = True
+        idx = next((i for i, it in enumerate(items) if it["name"] == current), -1)
+        if idx >= 0:
+            combo.set_active(idx)
+        self._loading = False
+        combo.connect(
+            "changed",
+            lambda cb, its=items, fn=on_select: fn(its[cb.get_active()]["name"])
+            if cb.get_active() >= 0
+            else None,
+        )
+        return combo
+
+    # ---- data -------------------------------------------------------------
+    def _state(self):
+        self._sinks = parse_sinks(run("list", "sinks"))
+        self._sources = parse_sources(run("list", "sources"))
+        self._inputs = parse_sink_inputs(run("list", "sink-inputs"))
+        self._outputs = parse_source_outputs(run("list", "source-outputs"))
+        self._dflt_sink = run("get-default-sink").strip()
+        self._dflt_source = run("get-default-source").strip()
+
+    def _signature_of(self):
+        return (
+            self._dflt_sink,
+            self._dflt_source,
+            tuple((s["idx"], s["name"], s["muted"], s["vol"]) for s in self._sinks),
+            tuple((s["idx"], s["name"], s["muted"], s["vol"]) for s in self._sources),
+            tuple(
+                (i["idx"], i["sink"], i["muted"], i["vol"], i["label"])
+                for i in self._inputs
+            ),
+            tuple(
+                (o["idx"], o["source"], o["muted"], o["vol"], o["label"])
+                for o in self._outputs
+            ),
+        )
+
+    # ---- pactl actions ----------------------------------------------------
+    @staticmethod
+    def sink_vol(name, v):
+        run("set-sink-volume", name, f"{v}%")
+
+    @staticmethod
+    def sink_mute(name):
+        run("set-sink-mute", name, "toggle")
+
+    @staticmethod
+    def source_vol(name, v):
+        run("set-source-volume", name, f"{v}%")
+
+    @staticmethod
+    def source_mute(name):
+        run("set-source-mute", name, "toggle")
+
+    @staticmethod
+    def input_vol(i, v):
+        run("set-sink-input-volume", str(i), f"{v}%")
+
+    @staticmethod
+    def input_mute(i):
+        run("set-sink-input-mute", str(i), "toggle")
+
+    @staticmethod
+    def input_move(i, name):
+        run("move-sink-input", str(i), name)
+
+    @staticmethod
+    def output_vol(i, v):
+        run("set-source-output-volume", str(i), f"{v}%")
+
+    @staticmethod
+    def output_mute(i):
+        run("set-source-output-mute", str(i), "toggle")
+
+    @staticmethod
+    def output_move(i, name):
+        run("move-source-output", str(i), name)
+
+    # ---- UI ---------------------------------------------------------------
+    def refresh(self):
+        self._state()
+        sig = self._signature_of()
+        if sig == self._signature or self._dragging:
+            return
+        self._signature = sig
+        self._rebuild()
+
+    def _rebuild(self):
+        self._loading = True
+        try:
+            for ch in list(self._content.get_children()):
+                self._content.remove(ch)
+
+            # Output
+            self._content.pack_start(self._section("OUTPUT  \u2014 speaker"), False, False, 0)
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.get_style_context().add_class("applet-row")
+            sink_names = {s["idx"]: s["name"] for s in self._sinks}
+            combo = self._new_combo(
+                self._sinks, self._dflt_sink, lambda n: run("set-default-sink", n)
+            )
+            row.pack_start(combo, True, True, 0)
+            default = next(
+                (s for s in self._sinks if s["name"] == self._dflt_sink), None
+            )
+            if default:
+                m = self._new_mute(default["muted"], lambda n=default["name"]: self.sink_mute(n))
+                row.pack_start(m, False, False, 0)
+            self._content.pack_start(row, False, False, 0)
+
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.get_style_context().add_class("applet-row")
+            if default:
+                s, p = self._new_slider(
+                    default["vol"], lambda v, n=default["name"]: self.sink_vol(n, v)
+                )
+                row.pack_start(s, True, True, 0)
+                row.pack_start(p, False, False, 0)
+            self._content.pack_start(row, False, False, 0)
+
+            # Input
+            self._content.pack_start(self._section("INPUT  \u2014 microphone"), False, False, 0)
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.get_style_context().add_class("applet-row")
+            combo = self._new_combo(
+                self._sources, self._dflt_source, lambda n: run("set-default-source", n)
+            )
+            row.pack_start(combo, True, True, 0)
+            default_src = next(
+                (s for s in self._sources if s["name"] == self._dflt_source), None
+            )
+            if default_src:
+                m = self._new_mute(
+                    default_src["muted"], lambda n=default_src["name"]: self.source_mute(n)
+                )
+                row.pack_start(m, False, False, 0)
+            self._content.pack_start(row, False, False, 0)
+
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.get_style_context().add_class("applet-row")
+            if default_src:
+                s, p = self._new_slider(
+                    default_src["vol"], lambda v, n=default_src["name"]: self.source_vol(n, v)
+                )
+                row.pack_start(s, True, True, 0)
+                row.pack_start(p, False, False, 0)
+            self._content.pack_start(row, False, False, 0)
+
+            # Applications
+            self._content.pack_start(self._section("APPLICATIONS"), False, False, 0)
+            if not self._inputs:
+                empty = Gtk.Label(label="no applications playing audio", xalign=0)
+                empty.get_style_context().add_class("applet-sub")
+                self._content.pack_start(empty, False, False, 0)
+            for inp in self._inputs:
+                self._content.pack_start(
+                    self._app_row(
+                        inp["label"],
+                        inp["muted"],
+                        inp["vol"],
+                        self._sinks,
+                        inp["sink"],
+                        self.input_vol,
+                        self.input_mute,
+                        self.input_move,
+                        inp["idx"],
+                    ),
+                    False,
+                    False,
+                    0,
+                )
+
+            # Recordings
+            self._content.pack_start(self._section("RECORDING"), False, False, 0)
+            if not self._outputs:
+                empty = Gtk.Label(label="no applications recording", xalign=0)
+                empty.get_style_context().add_class("applet-sub")
+                self._content.pack_start(empty, False, False, 0)
+            for out in self._outputs:
+                self._content.pack_start(
+                    self._app_row(
+                        out["label"],
+                        out["muted"],
+                        out["vol"],
+                        self._sources,
+                        out["source"],
+                        self.output_vol,
+                        self.output_mute,
+                        self.output_move,
+                        out["idx"],
+                    ),
+                    False,
+                    False,
+                    0,
+                )
+
+            spacer = Gtk.Box()
+            self._content.pack_start(spacer, False, False, 0)
+            self._content.show_all()
+        finally:
+            self._loading = False
+
+    def _app_row(self, label, muted, vol, devices, cur, vol_fn, mute_fn, move_fn, idx):
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.get_style_context().add_class("applet-row")
+        name = Gtk.Label(label=label, xalign=0)
+        name.get_style_context().add_class("applet-name")
+        name.set_ellipsize(Pango.EllipsizeMode.END)
+        name.set_max_width_chars(12)
+        row.pack_start(name, False, False, 0)
+
+        dev_name = devices[cur].get("name") if 0 <= cur < len(devices) else ""
+        combo = self._new_combo(
+            devices, dev_name, lambda n, i=idx, fn=move_fn: fn(i, n)
+        )
+        row.pack_start(combo, False, False, 0)
+
+        m = self._new_mute(muted, lambda i=idx, fn=mute_fn: fn(i))
+        row.pack_start(m, False, False, 0)
+
+        s, p = self._new_slider(vol, lambda v, i=idx, fn=vol_fn: fn(i, v))
+        row.pack_start(s, True, True, 0)
+        row.pack_start(p, False, False, 0)
+        return row
+
+
+if __name__ == "__main__":
+    print("AUDIO-APPLET starting", flush=True)
+    win = AudioApplet()
+    print("AUDIO-APPLET window created", flush=True)
+    win.show_all()
+    print("AUDIO-APPLET shown", flush=True)
+    Gtk.main()
+    print("AUDIO-APPLET main quit", flush=True)
